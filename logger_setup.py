@@ -3,23 +3,30 @@
 import logging
 import os
 
+from config import LOG_FILE
+
 
 def setup_logger():
 
-    os.makedirs(
-        "data",
-        exist_ok=True
+    log_directory = os.path.dirname(
+        LOG_FILE
     )
 
+    if log_directory:
+        os.makedirs(
+            log_directory,
+            exist_ok=True
+        )
+
     logger = logging.getLogger(
-        "MALMonitor"
+        "MALFormMonitor"
     )
 
     logger.setLevel(
         logging.INFO
     )
 
-    # Prevent duplicate handlers
+    # Avoid duplicate log entries
     if logger.handlers:
         return logger
 
@@ -28,7 +35,7 @@ def setup_logger():
     )
 
     file_handler = logging.FileHandler(
-        "data/monitor.log",
+        LOG_FILE,
         encoding="utf-8"
     )
 

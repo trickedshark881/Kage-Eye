@@ -4,7 +4,9 @@ from config import (
     MAL_CLIENT_ID,
     TOPIC_ID,
     SHEET_ID,
-    PASSING_THRESHOLD
+    PASSING_THRESHOLD,
+    REPORT_FILE,
+    STATE_FILE
 )
 
 from mal_client import MALClient
@@ -22,10 +24,9 @@ def main():
     print("Starting Report Generation")
     print("=" * 50)
 
-    logger.info(
-        "Report generation started"
-    )
+    logger.info("Report generation started")
 
+    # Clients
     mal = MALClient(
         MAL_CLIENT_ID,
         TOPIC_ID
@@ -35,13 +36,18 @@ def main():
         SHEET_ID
     )
 
-    state = StateManager()
+    state = StateManager(
+        STATE_FILE
+    )
 
-    report = ReportWriter()
+    report = ReportWriter(
+        REPORT_FILE
+    )
 
-    # Create a completely fresh Excel report
+    # Always create fresh Excel report
     report.create_fresh_report()
 
+    # Retrieve qualifying MAL forum posts
     submissions = mal.get_valid_submissions()
 
     print(
@@ -49,7 +55,7 @@ def main():
     )
 
     logger.info(
-        f"Found {len(submissions)} valid submissions"
+        f"Found {len(submissions)} valid forum submissions"
     )
 
     passed_count = 0
@@ -71,29 +77,33 @@ def main():
             "forum_user"
         ]
 
-        print(
-            f"\nProcessing reply #{reply_number}"
+        logger.info(
+            f"Processing reply={reply_number} "
+            f"user={username}"
         )
 
+        print()
+        print(
+            f"Processing reply #{reply_number}"
+        )
         print(
             f"Username: {username}"
         )
 
-        logger.info(
-            f"Processing username={username}"
-        )
-
+        # Find latest form response
         form_data = (
             sheets.find_latest_submission(
                 username
             )
         )
 
-        # ======================
-        # USER NOT FOUND
-        # ======================
+        # =========================
+        # MISSING
+        # =========================
 
         if form_data is None:
+
+            print("Result: MISSING")
 
             report.add_missing(
                 username,
@@ -112,45 +122,71 @@ def main():
             missing_count += 1
 
             logger.warning(
-                f"{username} not found in Google Sheet"
+                f"MISSING | user={username} "
+                f"reply={reply_number}"
             )
 
             continue
 
-        timestamp = form_data[
-            "timestamp"
-        ]
+        timestamp = form_data["timestamp"]
+        score = form_data["score"]
+        score_raw = form_data["score_raw"]
 
-        score = form_data[
-            "score"
-        ]
-
-        score_raw = form_data[
-            "score_raw"
-        ]
-
-        # ======================
+        # =========================
         # ALREADY PROCESSED
-        # ======================
+        # =========================
 
         if state.already_processed(
             username,
             timestamp
         ):
 
+            print("Already processed. Skipping.")
+
             skipped_count += 1
 
             logger.info(
-                f"Skipped already processed: {username}"
+                f"SKIPPED | user={username} "
+                f"timestamp={timestamp}"
             )
 
             continue
 
-        # ======================
+        # Invalid/missing score protection
+        if score is None:
+
+            print("Score could not be parsed.")
+
+            report.add_missing(
+                username,
+                reply_number
+            )
+
+            report.add_audit(
+                reply_number,
+                forum_user,
+                username,
+                score_raw,
+                "Missing",
+                timestamp
+            )
+
+            missing_count += 1
+
+            logger.warning(
+                f"INVALID SCORE | user={username} "
+                f"value={score_raw}"
+            )
+
+            continue
+
+        # =========================
         # PASSED
-        # ======================
+        # =========================
 
         if score >= PASSING_THRESHOLD:
+
+            print("Result: PASSED")
 
             report.add_passed(
                 username,
@@ -171,14 +207,17 @@ def main():
             passed_count += 1
 
             logger.info(
-                f"PASSED | {username} | {score_raw}"
+                f"PASSED | user={username} "
+                f"score={score_raw}"
             )
 
-        # ======================
+        # =========================
         # FAILED
-        # ======================
+        # =========================
 
         else:
+
+            print("Result: FAILED")
 
             report.add_failed(
                 username,
@@ -199,9 +238,11 @@ def main():
             failed_count += 1
 
             logger.info(
-                f"FAILED | {username} | {score_raw}"
+                f"FAILED | user={username} "
+                f"score={score_raw}"
             )
 
+        # Remember this exact Google Form submission
         state.mark_processed(
             username,
             timestamp
@@ -210,13 +251,15 @@ def main():
     report.update_summary()
 
     logger.info(
-        f"Completed | Passed={passed_count} "
+        f"Completed | "
+        f"Passed={passed_count} "
         f"Failed={failed_count} "
         f"Missing={missing_count} "
         f"Skipped={skipped_count}"
     )
 
-    print("\n" + "=" * 50)
+    print()
+    print("=" * 50)
     print("REPORT COMPLETED")
     print("=" * 50)
 
@@ -225,9 +268,9 @@ def main():
     print(f"Missing: {missing_count}")
     print(f"Skipped: {skipped_count}")
 
+    print()
     print(
-        "\nExcel report saved to:"
-        " data/results.xlsx"
+        f"Excel report saved to: {REPORT_FILE}"
     )
 
 

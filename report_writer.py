@@ -5,23 +5,26 @@ import os
 from openpyxl import Workbook
 from openpyxl import load_workbook
 
+from config import REPORT_FILE
+
 
 class ReportWriter:
 
-    def __init__(
-        self,
-        filepath="data/results.xlsx"
-    ):
+    def __init__(self, filepath=REPORT_FILE):
         self.filepath = filepath
 
     def create_fresh_report(self):
 
-        os.makedirs(
-            os.path.dirname(self.filepath),
-            exist_ok=True
+        directory = os.path.dirname(
+            self.filepath
         )
 
-        # Delete old report
+        if directory:
+            os.makedirs(
+                directory,
+                exist_ok=True
+            )
+
         if os.path.exists(self.filepath):
             os.remove(self.filepath)
 
@@ -30,10 +33,7 @@ class ReportWriter:
         ws = wb.active
         ws.title = "Results"
 
-        # ======================
-        # PASSED SECTION
-        # ======================
-
+        # PASSED
         ws["C1"] = "PASSED"
 
         ws["A2"] = "Username"
@@ -41,10 +41,7 @@ class ReportWriter:
         ws["C2"] = "Time stamp (DD-MM-YYYY HH:MM:SS)"
         ws["D2"] = "Reply No."
 
-        # ======================
-        # FAILED SECTION
-        # ======================
-
+        # FAILED
         ws["H1"] = "FAILED"
 
         ws["F2"] = "Username"
@@ -52,10 +49,7 @@ class ReportWriter:
         ws["H2"] = "Time stamp (DD-MM-YYYY HH:MM:SS)"
         ws["I2"] = "Reply No."
 
-        # ======================
-        # MISSING SECTION
-        # ======================
-
+        # MISSING
         ws["M1"] = "MISSING"
 
         ws["K2"] = "Username"
@@ -63,20 +57,18 @@ class ReportWriter:
         ws["M2"] = "Time stamp (DD-MM-YYYY HH:MM:SS)"
         ws["N2"] = "Reply No."
 
-        # ======================
-        # SUMMARY SHEET
-        # ======================
-
-        summary = wb.create_sheet("Summary")
+        # SUMMARY
+        summary = wb.create_sheet(
+            "Summary"
+        )
 
         summary["A1"] = "Metric"
         summary["B1"] = "Value"
 
-        # ======================
-        # AUDIT LOG SHEET
-        # ======================
-
-        audit = wb.create_sheet("Audit Log")
+        # AUDIT LOG
+        audit = wb.create_sheet(
+            "Audit Log"
+        )
 
         audit.append([
             "Reply Number",
@@ -124,11 +116,15 @@ class ReportWriter:
         reply_number
     ):
 
-        wb = load_workbook(self.filepath)
+        wb = load_workbook(
+            self.filepath
+        )
 
         ws = wb["Results"]
 
-        row = self._next_passed_row(ws)
+        row = self._next_passed_row(
+            ws
+        )
 
         ws[f"A{row}"] = f"@{username}"
         ws[f"B{row}"] = score
@@ -145,11 +141,15 @@ class ReportWriter:
         reply_number
     ):
 
-        wb = load_workbook(self.filepath)
+        wb = load_workbook(
+            self.filepath
+        )
 
         ws = wb["Results"]
 
-        row = self._next_failed_row(ws)
+        row = self._next_failed_row(
+            ws
+        )
 
         ws[f"F{row}"] = f"@{username}"
         ws[f"G{row}"] = score
@@ -164,11 +164,15 @@ class ReportWriter:
         reply_number
     ):
 
-        wb = load_workbook(self.filepath)
+        wb = load_workbook(
+            self.filepath
+        )
 
         ws = wb["Results"]
 
-        row = self._next_missing_row(ws)
+        row = self._next_missing_row(
+            ws
+        )
 
         ws[f"K{row}"] = f"@{username}"
         ws[f"L{row}"] = "N/A"
@@ -187,7 +191,9 @@ class ReportWriter:
         timestamp
     ):
 
-        wb = load_workbook(self.filepath)
+        wb = load_workbook(
+            self.filepath
+        )
 
         audit = wb["Audit Log"]
 
@@ -204,7 +210,9 @@ class ReportWriter:
 
     def update_summary(self):
 
-        wb = load_workbook(self.filepath)
+        wb = load_workbook(
+            self.filepath
+        )
 
         results = wb["Results"]
         summary = wb["Summary"]

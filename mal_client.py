@@ -4,6 +4,8 @@ import re
 import html
 import requests
 
+from config import SUBMISSION_KEYWORDS
+
 
 class MALClient:
 
@@ -49,30 +51,26 @@ class MALClient:
 
             all_posts.extend(posts)
 
-            paging = data.get("paging", {})
-
-            next_url = paging.get("next")
+            next_url = (
+                data.get("paging", {})
+                .get("next")
+            )
 
             if not next_url:
                 break
 
             url = next_url
-
-            # next_url already contains
-            # pagination parameters
             params = None
 
         return all_posts
 
-    def extract_submission(self, body):
+    def clean_body(self, body):
 
         if not body:
-            return None
+            return ""
 
-        # Decode escaped HTML
         body = html.unescape(body)
 
-        # Convert HTML line breaks
         body = re.sub(
             r"<br\s*/?>",
             "\n",
@@ -80,24 +78,21 @@ class MALClient:
             flags=re.IGNORECASE
         )
 
-        body = body.replace("\r", "")
+        return body.replace("\r", "").strip()
 
-        pattern = (
-            r"submited(?:\s+the\s+form)?!"
-            r".*?"
-            r"username:\s*([^\r\n<]+)"
-        )
+    def is_submission(self, body):
 
-        match = re.search(
-            pattern,
-            body,
-            re.IGNORECASE | re.DOTALL
-        )
+        body = self.clean_body(body).lower()
 
-        if not match:
-            return None
+        for keyword in SUBMISSION_KEYWORDS:
 
-        return match.group(1).strip()
+            # Match keyword as an independent word
+            pattern = rf"\b{re.escape(keyword)}\b"
+
+            if re.search(pattern, body):
+                return True
+
+        return False
 
     def get_valid_submissions(self):
 
@@ -106,36 +101,44 @@ class MALClient:
         submissions = []
 
         print(
-            f"Total forum posts fetched: "
-            f"{len(posts)}"
+            f"Total forum posts fetched: {len(posts)}"
         )
 
         for post in posts:
 
-            username = self.extract_submission(
-                post.get("body", "")
-            )
+            body = post.get("body", "")
 
-            print(
-                f"Reply #{post.get('number')} "
-                f"-> {username}"
-            )
-
-            if username is None:
+            if not self.is_submission(body):
                 continue
 
-            submissions.append({
+            forum_user = (
+                post.get("created_by", {})
+                .get("name")
+            )
+
+            if not forum_user:
+                continue
+
+            submission = {
                 "reply_number":
                     post.get("number"),
 
                 "forum_user":
-                    post.get(
-                        "created_by",
-                        {}
-                    ).get("name"),
+                    forum_user,
 
+                # Google Sheet lookup username
                 "submitted_username":
-                    username
-            })
+                    forum_user,
+
+                "forum_timestamp":
+                    post.get("created_at")
+            }
+
+            submissions.append(submission)
+
+            print(
+                f"Reply #{submission['reply_number']} "
+                f"-> {forum_user}"
+            )
 
         return submissions

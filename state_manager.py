@@ -3,13 +3,12 @@
 import json
 import os
 
+from config import STATE_FILE
+
 
 class StateManager:
 
-    def __init__(
-        self,
-        filepath="data/processed_state.json"
-    ):
+    def __init__(self, filepath=STATE_FILE):
         self.filepath = filepath
 
     def load(self):
@@ -18,7 +17,6 @@ class StateManager:
             return {}
 
         try:
-
             with open(
                 self.filepath,
                 "r",
@@ -40,10 +38,15 @@ class StateManager:
 
     def save(self, state):
 
-        os.makedirs(
-            os.path.dirname(self.filepath),
-            exist_ok=True
+        directory = os.path.dirname(
+            self.filepath
         )
+
+        if directory:
+            os.makedirs(
+                directory,
+                exist_ok=True
+            )
 
         with open(
             self.filepath,
@@ -65,7 +68,7 @@ class StateManager:
 
         state = self.load()
 
-        username = username.lower()
+        username = username.lower().strip()
 
         return (
             state.get(username)
@@ -80,8 +83,8 @@ class StateManager:
 
         state = self.load()
 
-        state[
-            username.lower()
-        ] = timestamp
+        username = username.lower().strip()
+
+        state[username] = timestamp
 
         self.save(state)

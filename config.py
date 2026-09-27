@@ -1,28 +1,41 @@
 # config.py
 
 import os
-
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# MAL
 
-MAL_CLIENT_ID = os.getenv(
-    "MAL_CLIENT_ID"
-)
+# ==========================
+# MAL SETTINGS
+# ==========================
+
+MAL_CLIENT_ID = os.getenv("MAL_CLIENT_ID")
 
 TOPIC_ID = int(
     os.getenv("TOPIC_ID")
 )
 
-# Google Sheets
+SUBMISSION_KEYWORDS = [
+    word.strip().lower()
+    for word in os.getenv(
+        "SUBMISSION_KEYWORDS",
+        "submitted,submited,submit"
+    ).split(",")
+    if word.strip()
+]
 
-SHEET_ID = os.getenv(
-    "SHEET_ID"
-)
 
-# Quiz
+# ==========================
+# GOOGLE SHEETS
+# ==========================
+
+SHEET_ID = os.getenv("SHEET_ID")
+
+
+# ==========================
+# QUIZ
+# ==========================
 
 TOTAL_QUESTIONS = int(
     os.getenv(
@@ -38,7 +51,10 @@ PASSING_THRESHOLD = int(
     )
 )
 
-# Files
+
+# ==========================
+# FILES
+# ==========================
 
 REPORT_FILE = os.getenv(
     "REPORT_FILE",
@@ -55,7 +71,10 @@ LOG_FILE = os.getenv(
     "data/monitor.log"
 )
 
-# Report
+
+# ==========================
+# REPORT
+# ==========================
 
 GENERATE_AUDIT_LOG = (
     os.getenv(
